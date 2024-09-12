@@ -1,0 +1,34 @@
+version: '3.9'
+
+services:
+  # Main Database
+  main-db:
+    image: postgres:15-alpine
+    container_name: main_db
+    environment:
+      POSTGRES_USER: main_user
+      POSTGRES_PASSWORD: main_password
+      POSTGRES_DB: main_db
+    ports:
+      - '5432:5432' # Exposing PostgreSQL port
+    volumes:
+      - main_db_data:/var/lib/postgresql/data
+
+  # Test Database
+  test-db:
+    image: postgres:15-alpine
+    container_name: test_db
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: test_db
+    ports:
+      - '5433:5432' # Exposing test PostgreSQL on a different host port
+    volumes:
+      - test_db_data:/var/lib/postgresql/data
+
+volumes:
+  main_db_data:
+    driver: local
+  test_db_data:
+    driver: local
