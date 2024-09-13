@@ -17,12 +17,14 @@ export class AuthResolver {
   @Mutation(() => RegisterResponse)
   async register(
     @Args('registerInput') registerInput: RegisterInput,
-  ): Promise<Partial<User>> {
+  ): Promise<{ user: Partial<User> }> {
     return await this.authService.register(registerInput);
   }
 
   @Mutation(() => LoginResponse)
-  async login(@Args('loginInput') registerInput: LoginInput): Promise<any> {
+  async login(
+    @Args('loginInput') registerInput: LoginInput,
+  ): Promise<{ accessToken: string }> {
     return await this.authService.login(registerInput);
   }
 
@@ -42,7 +44,7 @@ export class AuthResolver {
   @UseGuards(AuthGuard)
   async biometricLogin(
     @Args('biometricInput') biometricLogin: BiometricLoginInput,
-  ): Promise<any> {
+  ): Promise<{ accessToken: string }> {
     return await this.authService.biometricLogin(biometricLogin);
   }
 

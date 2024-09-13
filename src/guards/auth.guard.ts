@@ -26,7 +26,7 @@ export class AuthGuard implements CanActivate {
     const graphQlContext = GqlExecutionContext.create(context);
     const { req } = graphQlContext.getContext();
 
-    const accessToken = req.headers.authorization.split(' ')[1];
+    const accessToken = req.headers.authorization?.split(' ')[1];
     if (!accessToken) {
       this.logger.error('Please login to access this resource!');
 

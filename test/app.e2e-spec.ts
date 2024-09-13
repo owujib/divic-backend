@@ -1,10 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { GraphQLModule } from '@nestjs/graphql';
-import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module'; // Adjust the import path
 import { PrismaService } from '../src/shared/prisma/prisma.service';
-import path from 'path';
+import { ValidationPipe } from '@nestjs/common';
 
 describe('App (e2e)', () => {
   let app;
@@ -17,7 +15,16 @@ describe('App (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
+
     await app.init();
+
     prismaService = app.get(PrismaService);
 
     // Clean up the database before running tests
@@ -31,10 +38,15 @@ describe('App (e2e)', () => {
   it('should register a user', async () => {
     const registerMutation = `
       mutation {
-        register(email: "test@example.com", password: "password123") {
-          id
-          email
-          createdAt
+        register(registerInput:{email: "test@example.com", password:"password123"}){
+          user{
+            id
+            email
+            createdAt
+          }
+          error{
+            message
+          }
         }
       }
     `;
@@ -44,16 +56,43 @@ describe('App (e2e)', () => {
       .send({ query: registerMutation })
       .expect(200);
 
-    expect(response.body.data.register.email).toBe('test@example.com');
+    expect(response.body.data.register.user.email).toBe('test@example.com');
+  });
+
+  it('should return a validation error when invalid data is provided', async () => {
+    const registerMutation = `
+      mutation {
+        register(registerInput:{email: "testuser", password:"short"}){
+          user{
+            id
+            email
+            createdAt
+          }
+          error{
+            message
+          }
+        }
+      }
+    `;
+
+    const response = await request(app.getHttpServer())
+      .post('/graphql')
+      .send({ query: registerMutation })
+      .expect(200);
+
+    expect(response.body.errors[0].message).toContain('Bad Request Exception');
   });
 
   it('should login a user', async () => {
     const loginMutation = `
       mutation {
-        login(email: "test@example.com", password: "password123") {
+      login(loginInput: {email: "test@example.com", password:"password123"}){
           accessToken
+          error{
+            message
+          }
         }
-      }
+      }   
     `;
 
     const response = await request(app.getHttpServer())
@@ -68,8 +107,11 @@ describe('App (e2e)', () => {
   it('should set up biometric login', async () => {
     const biometricSetupMutation = `
       mutation {
-        setUpBiometricLogin(biometricKey: "sampleBiometricKey") {
+        setBiometricLogin(biometricInput: {biometricKey: "1223"}) {
           message
+          error{
+            message
+          }
         }
       }
     `;
@@ -80,34 +122,61 @@ describe('App (e2e)', () => {
       .send({ query: biometricSetupMutation })
       .expect(200);
 
-    expect(response.body.data.setUpBiometricLogin.message).toBe('Successful');
+    expect(response.body.data.setBiometricLogin.message).toBe('Successful');
   });
 
-  it('should biometric login successfully', async () => {
+  it('should login with biometric key', async () => {
     const biometricLoginMutation = `
       mutation {
-        biometricLogin(biometricKey: "sampleBiometricKey") {
+        biometricLogin(biometricInput: {biometricKey:"1223"}){
           accessToken
+          error{
+            message
+          }
         }
       }
     `;
 
     const response = await request(app.getHttpServer())
       .post('/graphql')
+      .set('Authorization', `Bearer ${token}`)
       .send({ query: biometricLoginMutation })
       .expect(200);
 
-    expect(response.body.data.biometricLogin.accessToken).toBeDefined();
+    token = response.body.data.biometricLogin.accessToken;
+
+    expect(response.body.data.biometricLogin).toHaveProperty('accessToken');
   });
 
-  it('should get logged-in user', async () => {
+  it('should return a validation error when invalid biometric key is provided', async () => {
+    const registerMutation = `
+      mutation {
+        biometricLogin(biometricInput: {biometricKey:"wrong-key"}){
+          accessToken
+          error{
+            message
+          }
+        }
+      }
+    `;
+
+    const response = await request(app.getHttpServer())
+      .post('/graphql')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ query: registerMutation })
+      .expect(200);
+
+    expect(response.body.errors[0].message).toContain('Invalid biometric key');
+  });
+
+  it('should get logged-in   user', async () => {
     const getUserQuery = `
       query {
         getLoggedInUser {
           id
           email
         }
-      }
+      }     
     `;
 
     const response = await request(app.getHttpServer())

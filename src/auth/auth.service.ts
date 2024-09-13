@@ -20,7 +20,7 @@ export class AuthService {
   ) {
     this.logger = new Logger(AuthService.name);
   }
-  async register({ email, password }: RegisterInput): Promise<User> {
+  async register({ email, password }: RegisterInput): Promise<{ user: User }> {
     const userExist = await this.prisma.user.findUnique({
       where: {
         email,
@@ -38,7 +38,7 @@ export class AuthService {
       data: { email, password: this.helperService.hashPassword(password) },
     });
 
-    return user;
+    return { user };
   }
 
   async login({
