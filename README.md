@@ -26,14 +26,14 @@ This is a GraphQL authentication service using NestJS. It includes features like
     Use Docker Compose to build the images and start the containers:
 
     ```bash
-    docker-compose up --build
+    docker-compose up -d
     ```
 
     This command will:
     - Build the Docker images for your application.
     - Start the application and database containers.
     - The application will be available at `http://localhost:3000/graphql`
-    
+      
 
 3. **Running Tests with Docker**
 
